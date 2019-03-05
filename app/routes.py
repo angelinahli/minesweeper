@@ -64,5 +64,11 @@ def sign_up():
         return redirect(url_for("index"))
     return render_template("signup.html", **params)
 
+@app.route("/logout/", methods=["GET", "POST"])
+def logout():
+    if is_logged_in():
+        logout_user()
+    return redirect(url_for("index"))
+
 def is_logged_in() -> bool:
     return current_user.is_authenticated
