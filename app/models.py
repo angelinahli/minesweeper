@@ -11,6 +11,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import db, login
 
+## Sessions Models ##
+
 class User(db.Model, UserMixin):
     __tablename__ = "user"
     __table_args__ = {"mysql_engine": "InnoDB"}
@@ -26,11 +28,21 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def get_last_active_game(self):
+        active_games = [g for g in self.games if g.game_status == GameStatus.IN_PROGRESS]
+        if len(active_games) > 0:
+            return active_games[-1]
+
     def __repr__(self) -> str:
         return "<User #{id}: {username}>".format(
             id=self.id, 
             username=self.username
         )
+
+# functions
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id))
 
 ## Game Models and Constructs ##
 
@@ -98,7 +110,8 @@ class Game(db.Model):
         onupdate="cascade")
     cells = db.relationship("Cell", backref="cell", lazy="dynamic")
 
-    def __init__(self, user_id):
+    def __init__(self, user_id, grid_length):
+        self.num_mines = grid_length * 2
         self.user_id = user_id
         self._initialize_new_game()
         
@@ -210,10 +223,3 @@ class Game(db.Model):
             self.game_status = GameStatus.LOST
         elif has_won:
             self.game_status = GameStatus.WON
-
-
-# functions
-
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id))

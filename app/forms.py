@@ -62,11 +62,11 @@ class SignUpForm(FlaskForm):
         fv = FlaskForm.validate(self)
         if not fv:
             return False
-        first_name = self.name.data.split()[0]
-        user = User(
-            username=self.username.data,
-            first_name=first_name,
-            full_name=self.name.data)
+        user = User(username=self.username.data)
         user.set_password(self.password.data)
         self.user = user
         return True
+
+class StartGameForm(FlaskForm):
+    grid_size = wtf.IntegerField("Grid Size", validators=[DataRequired()])
+    submit = wtf.SubmitField("Start Game")

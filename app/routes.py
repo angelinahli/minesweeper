@@ -1,19 +1,30 @@
-from flask import render_template, session
+from flask import render_template, session, redirect, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 
 from app import app, db
-from app.forms import LoginForm, SignUpForm
-from app.models import User
+from app.forms import LoginForm, SignUpForm, StartGameForm
+from app.models import User, Game
 
 @app.route("/")
 @app.route("/index/")
 def index():
-    params = dict(title="Minesweeper")
+    params = dict(title="Minesweeper", is_logged_in=is_logged_in())
     if not is_logged_in():
         params["full_header"] = True
         return render_template("landing.html", **params)
     
-    return render_template("play_game.html", **params)
+    params["user"] = current_user
+    last_game = current_user.get_last_active_game()
+    if last_game != None:
+        params["game"] = last_game
+        params["full_header"] = True
+        form = StartGameForm()
+        params["form"] = form
+        if form.validate_on_submit():
+            pass
+        return render_template("play_game.html", **params)
+
+    return render_template("start_game.html", **params)
 
 @app.route("/login/", methods=["GET", "POST"])
 def login():
@@ -23,6 +34,7 @@ def login():
     
     params = dict(
         title="Login",
+        is_logged_in=False,
         full_header=True)
     form = LoginForm()
     params["form"] = form
@@ -40,12 +52,15 @@ def sign_up():
     
     params = dict(
         title="Sign Up",
+        is_logged_in=False,
         full_header=True)
     form = SignUpForm()
     params["form"] = form
     if form.validate_on_submit():
         user = form.user
-        login_user(user, remember=form.remember_me)
+        db.session.add(user)
+        db.session.commit()
+        login_user(user)
         return redirect(url_for("index"))
     return render_template("signup.html", **params)
 

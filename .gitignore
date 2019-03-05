@@ -4,4 +4,4 @@ __pycache__/*
 *.pyc
 
 minesweeper.db
-config.py
+migrations/
