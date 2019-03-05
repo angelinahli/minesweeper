@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block header_content %}
+<div class="col-md-4 ml-auto mr-auto">
+  <div class="card card-login card-plain">
+    <form class="form" method="POST" action="" id="login">
+      {{ form.hidden_tag() }}
+      <div class="card-body">
+        <div class="input-group no-border input-lg">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-user"></i>
+            </span>
+          </div>
+          {{ form.username(class_="form-control", placeholder=form.username.label.text) }}
+        </div>
+        <div class="form-group">
+          {% for m in form.username.errors %}
+            <p class="text-error form-text">{{ m }}</p>
+          {% endfor %}
+        </div>
+        <div class="input-group no-border input-lg">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-key"></i>
+            </span>
+          </div>
+          {{ form.password(class_="form-control",  placeholder=form.password.label.text) }}
+        </div>
+        <div class="form-group">
+          {% for m in form.password.errors %}
+            <p class="text-error form-text">{{ m }}</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer text-center">
+        {{ form.remember_me(class_="form-check-input", type="checkbox", id="remember_me") }} {{ form.remember_me.label }}
+        <p>{{ form.submit(class_="btn btn-info btn-lg btn-round btn-block") }}</p>
+      </div>
+    </form>
+    <a class="btn btn-round btn-block" href="{{ url_for('sign_up') }}">Create An Account</a>
+  </div>
+</div>
+{% endblock %}

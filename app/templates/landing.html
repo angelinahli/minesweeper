@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block header_content %}
+<div class="row">
+  <div class="col-md-8 ml-auto mr-auto text-center">
+    <h2 class="title">Welcome!</h2>
+    <a href="{{ url_for('login') }}" class="btn btn-info btn-lg btn-round">
+      Please Login to Continue
+    </a>
+  </div>
+</div>
+{% endblock %}
