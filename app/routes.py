@@ -2,8 +2,8 @@ from flask import render_template, session, redirect, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 
 from app import app, db
-from app.forms import LoginForm, SignUpForm, StartGameForm
-from app.models import User, Game
+from app.forms import LoginForm, SignUpForm, StartGameForm, PlayMoveForm
+from app.models import User, Game, GAME_STATUS
 
 ## START USER AUTHENTICATION ROUTES ##
 
@@ -60,14 +60,14 @@ def index():
         return handle_start_game(params)
 
     params["game"] = last_game
-    return render_template("play_game.html", **params)
-
+    return handle_game(params)
+    
 def handle_start_game(params):
     form = StartGameForm()
     params["form"] = form
     if form.validate_on_submit():
         user_id = current_user.id
-        game = Game(user_id=user_id, grid_length=form.grid_length.data)
+        game = Game(user_id=user_id)
         db.session.add(game)
         db.session.commit()
 
@@ -75,6 +75,23 @@ def handle_start_game(params):
         db.session.commit()
         return redirect(url_for("index"))
     return render_template("new_game.html", **params)
+
+def handle_game(params):
+    game = params.get("game")
+    form = PlayMoveForm(game)
+    params["form"] = form
+    params["won"] = False
+    params["lost"] = False
+    if form.validate_on_submit():
+        game.play_move(form.row_val, form.col_val)
+        params["won"] = game.game_status == GAME_STATUS["WON"]
+        params["lost"] = game.game_status == GAME_STATUS["LOST"]
+        if params["won"] or params["lost"]:
+            return handle_end_game(params)
+    return render_template("play_game.html", **params)
+
+def handle_end_game(params):
+    return render_template("end_game.html", **params)
 
 def is_logged_in() -> bool:
     return current_user.is_authenticated

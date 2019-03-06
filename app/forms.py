@@ -19,7 +19,15 @@ def get_user_if_exists(username: str) -> Optional[User]:
 class CheckUsername(object):
     def __call__(self, form, field): 
         if get_user_if_exists(field.data) != None:
-            raise ValidationError("Sorry - this username is taken!")
+            raise ValidationError("This username is taken!")
+
+class CheckCoord(object):
+    def __init__(self, game):
+        self.game = game
+
+    def __call__(self, form, field):
+        if not self.game.is_valid_coord(field.data):
+            raise ValidationError("Invalid coordinate '{}'".format(field.data))
 
 class LoginForm(FlaskForm):    
     username = wtf.StringField("Username", validators=[DataRequired()])
@@ -68,6 +76,33 @@ class SignUpForm(FlaskForm):
         return True
 
 class StartGameForm(FlaskForm):
-    grid_length = wtf.IntegerField("Grid Size", validators=[DataRequired()])
-    submit = wtf.SubmitField("Start Game")
+    submit = wtf.SubmitField("New Game")
+
+class PlayMoveForm(FlaskForm):
+    row = wtf.IntegerField("Row")
+    col = wtf.IntegerField("Col")
+    submit = wtf.SubmitField("Play Move")
+
+    def __init__(self, game, *args, **kwargs):
+        FlaskForm.__init__(self, *args, **kwargs)
+        self.game = game
+        self.row_val = None
+        self.col_val = None
+        self.row.validators.append(CheckCoord(self.game))
+        self.col.validators.append(CheckCoord(self.game))
+
+    def validate(self):
+        fv = FlaskForm.validate(self)
+        if not fv:
+            return False
+        row = self.row.data
+        col = self.col.data
+        if self.game.is_valid_move(row, col):
+            self.row_val = row
+            self.col_val = col
+            return True
+        self.row.errors = list(self.row.errors)
+        self.row.errors.append("Move ({}, {}) is invalid!".format(row, col))
+        return False
+
 

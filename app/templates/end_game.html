@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block header_content %}
+<div class="container">
+  <!-- game representation -->
+  <div class="row">
+    {% if lost %}
+    <h2 class="text-center">😭 Sorry.... You lost! 😭</h2>
+    {% else %}
+    <h2 class="text-center">🎉 CONGRATS!! YOU WON! 🎉</h2>
+    {% endif %}
+  </div>
+  <div class="row">
+    <table class="table table-sm table-dark table-hover table-bordered">
+      <thead>
+        <tr>
+          <th class="th-fixed" scope="col"></th>
+          {% for col_index in range(game.grid_length) %}
+          <th class="th-fixed" scope="col">{{ col_index }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in range(game.grid_length) %}
+        <tr>
+          <th class="th-fixed" scope="row">{{ row }}</th>
+          {% for col in range(game.grid_length) %}
+          {% with cell = game.get_cell(row, col) %}
+          <th class="th-fixed" scope="row">{{ cell.get_display_value(show_value=True) }}</th>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,55 @@
 {% extends "base.html" %}
 
 {% block header_content %}
-<p>WOOOO</p>
+<div class="container">
+  <!-- game representation -->
+  <div class="row">
+    <table class="table table-sm table-dark table-hover table-bordered">
+      <thead>
+        <tr>
+          <th class="th-fixed" scope="col"></th>
+          {% for col_index in range(game.grid_length) %}
+          <th class="th-fixed" scope="col">{{ col_index }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in range(game.grid_length) %}
+        <tr>
+          <th class="th-fixed" scope="row">{{ row }}</th>
+          {% for col in range(game.grid_length) %}
+          {% with cell = game.get_cell(row, col) %}
+          <th class="th-fixed" scope="row">{{ cell.get_display_value() }}</th>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- new move form -->
+  <div class="row">
+    <form class="form" method="POST" action="" id="login">
+      {{ form.hidden_tag() }}
+      <div class="form-row">
+        <div class="col">
+          {{ form.row(class_="form-control",  placeholder=form.row.label.text) }}
+        </div>
+        <div class="col">
+          {{ form.col(class_="form-control",  placeholder=form.col.label.text) }}
+        </div>
+      </div>
+      <div class="form-group">
+        {% for m in form.row.errors %}
+          <p class="text-danger form-text">{{ m }}</p>
+        {% endfor %}
+        {% for m in form.col.errors %}
+          <p class="text-danger form-text">{{ m }}</p>
+        {% endfor %}
+      </div>
+      <p>{{ form.submit(class_="btn btn-primary btn-lg btn-round btn-block") }}</p>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

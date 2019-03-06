@@ -18,6 +18,7 @@ description: base template for flask app
   <!--     CSS Files     -->
   <link href="../static/css/bootstrap.min.css" rel="stylesheet" />
   <link href="../static/css/now-ui-kit.css?v=1.2.0" rel="stylesheet" />
+  <link href="../static/css/style.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -26,7 +27,7 @@ description: base template for flask app
     <div class="container">
       <div class="navbar-translate">
         <!-- brand -->
-        <a class="navbar-brand" href="{{ url_for('index') }}" rel="tooltip" title="Designed by Angelina Li, 2019." data-placement="bottom">
+        <a class="navbar-brand" href="{{ url_for('index') }}" rel="tooltip" title=":)" data-placement="bottom">
           Minesweeper
         </a>
 
@@ -61,7 +62,7 @@ description: base template for flask app
   <div class="wrapper">
     <!-- TODO: change these immages to something nicer -->
     <div class="page-header">
-      <div class="page-header-image" data-parallax="true" style="background-image: url('https://source.unsplash.com/user/angelinahli/likes');"></div>
+      <div class="page-header-image" data-parallax="true" style="background-image: url('https://source.unsplash.com/mBHuEkka5wM');"></div>
       <div class="content-center">
         <div class="container">
           <h1 class="title">{{ title }}</h1>

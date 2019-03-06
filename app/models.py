@@ -35,6 +35,15 @@ class Cell(db.Model):
     def equals(self, cell):
         return cell.row == self.row and cell.col == self.col
 
+    def get_display_value(self, show_value=False) -> str:
+        if not self.is_hit and not show_value:
+            return " "
+        if self.value == 0:
+            return "."
+        if self.is_mine:
+            return "X"
+        return str(self.value)
+        
     def __repr__(self) -> str:
         return "<Cell #{id}: coords=({row}, {col}); value={value}; game_id={game_id}>".format(
             id=self.id,
@@ -73,8 +82,8 @@ class Game(db.Model):
     ## DATA ##
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    grid_length = db.Column(db.Integer, default=10)
     num_mines = db.Column(db.Integer)
-    grid_length = db.Column(db.Integer)
     num_cells = db.Column(db.Integer)
     num_hit = db.Column(db.Integer, default=0)
     game_status = db.Column(db.Integer, default=GAME_STATUS["IN_PROGRESS"])
@@ -89,28 +98,21 @@ class Game(db.Model):
     ## INITIALIZE GRID ##
 
     def initialize_game(self) -> None:
-        print("MY ID PLS:", self.id)
-        print("USER ID:", self.user_id)
-        print("UM DO I HAVE ANY ATTRIBUTES:", self.grid_length)
-        self._initialize_game_properties()
-        self._initialize_cells()
-        
-    def _initialize_game_properties(self) -> None:
         self.num_mines = self.grid_length * 2
         self.num_cells = self.grid_length ** 2
+        self._initialize_cells()
 
     def _initialize_cells(self) -> None:
         # initialize and commit cells
         for row in range(self.grid_length):
             for col in range(self.grid_length):
                 cell = Cell(row=row, col=col, game_id=self.id)
-                print(cell)
                 db.session.add(cell)
                 db.session.commit()
         # initialize mines
         mine_coords = self._get_mine_coords()
         for row, col in mine_coords:
-            mine = self._get_cell(row, col)
+            mine = self.get_cell(row, col)
             mine.is_mine = True # initialize a mine
             db.session.commit()
             self._increment_mine_borders(mine)
@@ -122,12 +124,7 @@ class Game(db.Model):
         col_upper = self._get_valid_coord(mine.col + 1)
         for row in range(row_lower, row_upper + 1):
             for col in range(col_lower, col_upper + 1):
-                print(row, col)
-                for cell in Cell.query.all():
-                    print(cell)
-                cell = self._get_cell(row, col)
-                print(cell)
-                print("======")
+                cell = self.get_cell(row, col)
                 if not cell.is_mine:
                     cell.value += 1
                     db.session.commit()
@@ -153,17 +150,20 @@ class Game(db.Model):
         col = random.randint(0, self.grid_length - 1)
         return row, col
 
-    def _get_cell(self, row, col) -> CELL_TYPE:
+    def get_cell(self, row, col) -> CELL_TYPE:
         return Cell.query.filter_by(row=row, col=col, game_id=self.id).first()
 
+    def _get_mines(self) -> List[CELL_TYPE]:
+        return list(Cell.query.filter_by(is_mine=True, game_id=self.id))
+    
     ## PLAY MOVE ##
 
     def play_move(self, row: int, col: int) -> None:
         """
         Updates the game to accomodate for a move at row, col
         """
-        assert self.game_status == GameStatus.IN_PROGRESS
-        assert self._is_valid_move(row, col)
+        assert self.game_status == GAME_STATUS["IN_PROGRESS"]
+        assert self.is_valid_move(row, col)
         self._update_hit_status(row, col)
         self._update_game_status()
 
@@ -172,45 +172,47 @@ class Game(db.Model):
         Updates the game to accomodate for player marking a mine at
         row, col
         """
-        assert self.game_status == GameStatus.IN_PROGRESS
-        assert self._is_valid_move(row, col)
-        self._get_cell(row, col).is_marked_as_mine = True
+        assert self.game_status == GAME_STATUS["IN_PROGRESS"]
+        assert self.is_valid_move(row, col)
+        self.get_cell(row, col).is_marked_as_mine = True
 
     def _update_hit_status(self, row: int, col: int) -> None:
         # base cases: if cell has already been hit,
         # or if these are no longer valid coordinates
-        if not self._is_valid_coord(row) or \
-                not self._is_valid_coord(col):
+        if not self.is_valid_coord(row) or \
+                not self.is_valid_coord(col):
             return
         
-        cell = self._get_cell(row, col)
+        cell = self.get_cell(row, col)
         if cell.is_hit:
             return
 
-        self.cell.is_hit = True
+        cell.is_hit = True
         self.num_hit += 1
+        db.session.commit()
 
         # If it doesn't border any mines, recursively 'fill' neighbor cells
-        if self.cell.value == 0:
+        if cell.value == 0:
             self._update_hit_status(row - 1, col)
             self._update_hit_status(row + 1, col)
             self._update_hit_status(row, col - 1)
             self._update_hit_status(row, col + 1)
 
-    def _is_valid_coord(self, value: int) -> bool:
+    def is_valid_coord(self, value: int) -> bool:
         return 0 <= value < self.grid_length
 
-    def _is_valid_move(self, row: int, col: int) -> bool:
-        return self._is_valid_coord(row) and self._is_valid_coord(col) and \
-               not self._get_cell(row, col).is_hit
+    def is_valid_move(self, row: int, col: int) -> bool:
+        return self.is_valid_coord(row) and self.is_valid_coord(col) and \
+               not self.get_cell(row, col).is_hit
 
     def _update_game_status(self) -> None:
-        has_lost = any([mine.is_hit for mine in self.mines])
+        has_lost = any([mine.is_hit for mine in self._get_mines()])
         has_won = self.num_cells - self.num_mines == self.num_hit
         if has_lost:
-            self.game_status = GameStatus.LOST
+            self.game_status = GAME_STATUS["LOST"]
         elif has_won:
-            self.game_status = GameStatus.WON
+            self.game_status = GAME_STATUS["WON"]
+        db.session.commit()
 
 ## Sessions Models ##
 
