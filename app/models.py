@@ -4,69 +4,44 @@
 import random
 
 from datetime import datetime
-from enum import Enum
 from flask_login import UserMixin
 from typing import List, Tuple, TypeVar, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import db, login
 
-## Sessions Models ##
-
-class User(db.Model, UserMixin):
-    __tablename__ = "user"
-    __table_args__ = {"mysql_engine": "InnoDB"}
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), index=True, unique=True)
-    password_hash = db.Column(db.String(256))
-    games = db.relationship("Game", backref="game", lazy="dynamic")
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def get_last_active_game(self):
-        active_games = [g for g in self.games if g.game_status == GameStatus.IN_PROGRESS]
-        if len(active_games) > 0:
-            return active_games[-1]
-
-    def __repr__(self) -> str:
-        return "<User #{id}: {username}>".format(
-            id=self.id, 
-            username=self.username
-        )
-
-# functions
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
-
 ## Game Models and Constructs ##
 
-class GameStatus(Enum):
-    IN_PROGRESS = 1
-    WON = 2
-    LOST = 3
+GAME_STATUS = dict(
+    IN_PROGRESS=1,
+    WON=2,
+    LOST=3
+)
 
 class Cell(db.Model):
     __tablename__ = "cell"
     __table_args__ = {"mysql_engine": "InnoDB"}
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     row = db.Column(db.Integer)
     col = db.Column(db.Integer)
     value = db.Column(db.Integer, default=0)
     is_mine = db.Column(db.Boolean, default=False)
     is_hit = db.Column(db.Boolean, default=False)
     is_marked_as_mine = db.Column(db.Boolean, default=False)
-    game_id = db.Column(db.Integer, db.ForeignKey("game.id"), 
-        onupdate="cascade")
+    
+    game_id = db.Column(db.Integer, db.ForeignKey("game.id"))
 
     def equals(self, cell):
         return cell.row == self.row and cell.col == self.col
+
+    def __repr__(self) -> str:
+        return "<Cell #{id}: coords=({row}, {col}); value={value}; game_id={game_id}>".format(
+            id=self.id,
+            row=self.row,
+            col=self.col,
+            value=self.value,
+            game_id=self.game_id)
 
 class Game(db.Model):
     """
@@ -95,51 +70,67 @@ class Game(db.Model):
     __tablename__ = "game"
     __table_args__ = {"mysql_engine": "InnoDB"}
 
-    DEFAULT_NUM_MINES = 10
-    DEFAULT_GRID_LENGTH = 10
+    ## DATA ##
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    num_mines = db.Column(db.Integer)
+    grid_length = db.Column(db.Integer)
+    num_cells = db.Column(db.Integer)
+    num_hit = db.Column(db.Integer, default=0)
+    game_status = db.Column(db.Integer, default=GAME_STATUS["IN_PROGRESS"])
+    
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    cells = db.relationship("Cell", backref="cell", lazy="dynamic")
+    
+    ## CONSTANTS ##
+
     CELL_TYPE = TypeVar("Cell", bound=Cell)
 
-    id = db.Column(db.Integer, primary_key=True)
-    num_mines = db.Column(db.Integer, default=DEFAULT_NUM_MINES)
-    grid_length = db.Column(db.Integer, default=DEFAULT_GRID_LENGTH)
-    num_cells = db.Column(db.Integer, default=DEFAULT_GRID_LENGTH ** 2)
-    num_hit = db.Column(db.Integer, default=0)
-    game_status = db.Column(db.Integer, default=GameStatus.IN_PROGRESS)
-    
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), 
-        onupdate="cascade")
-    cells = db.relationship("Cell", backref="cell", lazy="dynamic")
-
-    def __init__(self, user_id, grid_length):
-        self.num_mines = grid_length * 2
-        self.user_id = user_id
-        self._initialize_new_game()
-        
     ## INITIALIZE GRID ##
 
-    def _initialize_new_game(self) -> None:
-        # initialize cells
+    def initialize_game(self) -> None:
+        print("MY ID PLS:", self.id)
+        print("USER ID:", self.user_id)
+        print("UM DO I HAVE ANY ATTRIBUTES:", self.grid_length)
+        self._initialize_game_properties()
+        self._initialize_cells()
+        
+    def _initialize_game_properties(self) -> None:
+        self.num_mines = self.grid_length * 2
+        self.num_cells = self.grid_length ** 2
+
+    def _initialize_cells(self) -> None:
+        # initialize and commit cells
         for row in range(self.grid_length):
             for col in range(self.grid_length):
                 cell = Cell(row=row, col=col, game_id=self.id)
+                print(cell)
+                db.session.add(cell)
+                db.session.commit()
         # initialize mines
         mine_coords = self._get_mine_coords()
         for row, col in mine_coords:
             mine = self._get_cell(row, col)
             mine.is_mine = True # initialize a mine
+            db.session.commit()
             self._increment_mine_borders(mine)
-        return grid
 
-    def _increment_mine_borders(self, grid: List[List[CELL_TYPE]], mine: CELL_TYPE) -> None:
+    def _increment_mine_borders(self, mine: CELL_TYPE) -> None:
         row_lower = self._get_valid_coord(mine.row - 1)
         row_upper = self._get_valid_coord(mine.row + 1)
         col_lower = self._get_valid_coord(mine.col - 1)
         col_upper = self._get_valid_coord(mine.col + 1)
         for row in range(row_lower, row_upper + 1):
             for col in range(col_lower, col_upper + 1):
+                print(row, col)
+                for cell in Cell.query.all():
+                    print(cell)
                 cell = self._get_cell(row, col)
+                print(cell)
+                print("======")
                 if not cell.is_mine:
                     cell.value += 1
+                    db.session.commit()
 
     def _get_valid_coord(self, value: int) -> int:
         return_value = value
@@ -154,7 +145,7 @@ class Game(db.Model):
             new_mine = self._get_random_mine()
             while new_mine in mine_coords:
                 new_mine = self._get_random_mine()
-            mines.append(new_mine)
+            mine_coords.append(new_mine)
         return mine_coords
 
     def _get_random_mine(self) -> Tuple[int]:
@@ -162,11 +153,8 @@ class Game(db.Model):
         col = random.randint(0, self.grid_length - 1)
         return row, col
 
-    def _get_cell(self, row, col) -> Optional[CELL_TYPE]:
-        matching_cells = [c for c in self.cells if c.row == row and c.col == col]
-        assert len(matching_cells) < 2
-        if len(matching_cells) == 1:
-            return matching_cells[0]
+    def _get_cell(self, row, col) -> CELL_TYPE:
+        return Cell.query.filter_by(row=row, col=col, game_id=self.id).first()
 
     ## PLAY MOVE ##
 
@@ -223,3 +211,36 @@ class Game(db.Model):
             self.game_status = GameStatus.LOST
         elif has_won:
             self.game_status = GameStatus.WON
+
+## Sessions Models ##
+
+class User(db.Model, UserMixin):
+    __tablename__ = "user"
+    __table_args__ = {"mysql_engine": "InnoDB"}
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), index=True, unique=True)
+    password_hash = db.Column(db.String(256))
+    games = db.relationship("Game", backref="game", lazy="dynamic")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def get_last_active_game(self):
+        active_games = [g for g in self.games if g.game_status == GAME_STATUS["IN_PROGRESS"]]
+        if len(active_games) > 0:
+            return active_games[-1]
+
+    def __repr__(self) -> str:
+        return "<User #{id}: {username}>".format(
+            id=self.id, 
+            username=self.username
+        )
+
+# functions
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id))

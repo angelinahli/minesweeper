@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block header_content %}
+<div class="col-md-4 ml-auto mr-auto">
+  <div class="card card-login card-plain">
+    <form class="form" method="POST" action="" id="login">
+      {{ form.hidden_tag() }}
+      <div class="card-body">
+        
+        <div class="input-group no-border input-lg">
+          <div class="input-group-prepend">
+            <span class="input-group-text">
+              <i class="fas fa-fire"></i>
+            </span>
+          </div>
+          {{ form.grid_length(class_="form-control", placeholder=form.grid_length.label.text) }}
+        </div>
+        <div class="form-group">
+          {% for m in form.grid_length.errors %}
+            <p class="text-error form-text">{{ m }}</p>
+          {% endfor %}
+        </div>
+
+      </div>
+
+      <div class="card-footer text-center">
+        <p>{{ form.submit(class_="btn btn-primary btn-lg btn-round btn-block") }}</p>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

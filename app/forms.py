@@ -8,7 +8,7 @@ from flask_wtf import FlaskForm
 from typing import TypeVar, Optional
 from wtforms.validators import DataRequired, EqualTo, Email, Regexp, ValidationError
 
-from app.models import User
+from app.models import User, Game
 
 USER_TYPE = TypeVar("User", bound=User)
 
@@ -68,5 +68,6 @@ class SignUpForm(FlaskForm):
         return True
 
 class StartGameForm(FlaskForm):
-    grid_size = wtf.IntegerField("Grid Size", validators=[DataRequired()])
+    grid_length = wtf.IntegerField("Grid Size", validators=[DataRequired()])
     submit = wtf.SubmitField("Start Game")
+

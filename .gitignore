@@ -5,3 +5,4 @@ __pycache__/*
 
 minesweeper.db
 migrations/
+delete_database_games.py
